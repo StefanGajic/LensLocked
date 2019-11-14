@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/lenslocked/models"
 )
 
@@ -12,7 +11,7 @@ const (
 	port     = 5432
 	user     = "postgres"
 	password = "postgres"
-	dbname   = "lenslocked_dev"
+	dbname   = "lenslocked_test"
 )
 
 func main() {
@@ -24,29 +23,22 @@ func main() {
 	}
 	defer us.Close()
 	us.DestructiveReset()
+	//us.AutoMigrate()
 
 	user := models.User{
-		Name:  "Rakesh Kumar",
-		Email: "rakesh@kumar.in",
+		Name:     "Stefan",
+		Email:    "stefan@mail.com",
+		Password: "stefan",
+		Remember: "abc123",
 	}
-	if err := us.Create(&user); err != nil {
-		panic(err)
-	}
-	if err := us.Delete(user.ID); err != nil {
-		panic(err)
-	}
-	// user.Email = "rakesh@india.com"
-	// if err := us.Update(&user); err != nil {
-	// 	panic(err)
-	// }
-	// userByEmail, err := us.ByEmail("rakesh@india.com")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println(userByEmail)
-	userByID, err := us.ByID(user.ID)
+	err = us.Create(&user)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(userByID)
+	fmt.Printf("%+v\n", user)
+	user2, err := us.ByRemember("abc123")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%+v\n", *user2)
 }
