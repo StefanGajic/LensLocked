@@ -1,7 +1,6 @@
 package models
 
 import (
-	"errors"
 	"regexp"
 	"strings"
 
@@ -15,32 +14,6 @@ import (
 
 const userPwPepper = "secret-random-string"
 const hmacSecretKey = "secret-hmac-key"
-
-var (
-	//ErrNotFound is returned when a resource cannot be found
-	//in the database
-	ErrNotFound = errors.New("models: resources not found")
-
-	//ErrInvalidID is returned when an invalid ID is provided
-	//to a method like Delete
-	ErrInvalidID = errors.New("models: ID provided was invalid")
-
-	ErrInvalidPassword = errors.New("models: incorrect password provided")
-
-	ErrEmailRequired = errors.New("models: Email address is required")
-
-	ErrEmailInvalid = errors.New("models: Email address is not valid")
-
-	ErrEmailTaken = errors.New("models: email address is already taken")
-
-	ErrRememberTooShort = errors.New("models: remember token must be at lear 32 bytes")
-
-	ErrPasswordRequired = errors.New("models: password is required")
-
-	ErrPasswordTooShort = errors.New("models: password must be at least 8 characters long")
-
-	ErrRememberRequired = errors.New("models: remember token is required")
-)
 
 //used to interact with users database
 type UserDB interface {
@@ -194,7 +167,6 @@ type userValFunc func(*User) error
 //will hash a remember is necessary
 func (uv *userValidator) Update(user *User) error {
 	err := runUserValFuncs(user,
-		uv.passwordRequired,
 		uv.passwordMinLength,
 		uv.bcryptPassword,
 		uv.passwordHashRequired,
