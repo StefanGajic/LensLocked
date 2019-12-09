@@ -1,21 +1,20 @@
 package controllers
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
 
-	"github.com/StefanGajic/lenslocked/context"
+	"github.com/lenslocked/context"
 	"github.com/lenslocked/models"
 	"github.com/lenslocked/views"
 )
 
 const (
-	ShowGallery = "show_gallery"
-	EditGallery = "edit_gallery"
+	IndexGalleries = "index_galleries"
+	ShowGallery    = "show_gallery"
+	EditGallery    = "edit_gallery"
 )
 
 func NewGalleries(gs models.GalleryService, r *mux.Router) *Galleries {
@@ -31,8 +30,8 @@ func NewGalleries(gs models.GalleryService, r *mux.Router) *Galleries {
 
 type Galleries struct {
 	New       *views.View
-	ShowView  *view.View
-	EditView  *view.View
+	ShowView  *views.View
+	EditView  *views.View
 	IndexView *views.View
 	gs        models.GalleryService
 	r         *mux.Router
@@ -42,13 +41,12 @@ type GalleryForm struct {
 	Title string `schema:"title"`
 }
 
-// GET / galleries
+// GET /galleries
 func (g *Galleries) Index(w http.ResponseWriter, r *http.Request) {
-
 	user := context.User(r.Context())
 	galleries, err := g.gs.ByUserID(user.ID)
 	if err != nil {
-		http.Error(w, "Something went wrong!", http.StatusInternalServerError)
+		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
 		return
 	}
 	var vd views.Data
@@ -56,7 +54,7 @@ func (g *Galleries) Index(w http.ResponseWriter, r *http.Request) {
 	g.IndexView.Render(w, r, vd)
 }
 
-// GET / galleries/:id
+// GET /galleries/:id
 func (g *Galleries) Show(w http.ResponseWriter, r *http.Request) {
 	gallery, err := g.galleryByID(w, r)
 	if err != nil {
@@ -67,7 +65,7 @@ func (g *Galleries) Show(w http.ResponseWriter, r *http.Request) {
 	g.ShowView.Render(w, r, vd)
 }
 
-// GET / galleries/:id/edit
+// GET /galleries/:id/edit
 func (g *Galleries) Edit(w http.ResponseWriter, r *http.Request) {
 	gallery, err := g.galleryByID(w, r)
 	if err != nil {
@@ -75,7 +73,7 @@ func (g *Galleries) Edit(w http.ResponseWriter, r *http.Request) {
 	}
 	user := context.User(r.Context())
 	if gallery.UserID != user.ID {
-		http.Error(w, "Gallery NOT found!", http.StatusNotFound)
+		http.Error(w, "You do not have permission to edit this gallery", http.StatusForbidden)
 		return
 	}
 	var vd views.Data
@@ -83,7 +81,7 @@ func (g *Galleries) Edit(w http.ResponseWriter, r *http.Request) {
 	g.EditView.Render(w, r, vd)
 }
 
-// POST / galleries/:id/update
+// POST /galleries/:id/update
 func (g *Galleries) Update(w http.ResponseWriter, r *http.Request) {
 	gallery, err := g.galleryByID(w, r)
 	if err != nil {
@@ -91,14 +89,13 @@ func (g *Galleries) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	user := context.User(r.Context())
 	if gallery.UserID != user.ID {
-		http.Error(w, "Gallery NOT found!", http.StatusNotFound)
+		http.Error(w, "Gallery not found", http.StatusNotFound)
 		return
 	}
 	var vd views.Data
 	vd.Yield = gallery
 	var form GalleryForm
 	if err := parseForm(r, &form); err != nil {
-		log.Println(err)
 		vd.SetAlert(err)
 		g.EditView.Render(w, r, vd)
 		return
@@ -107,31 +104,25 @@ func (g *Galleries) Update(w http.ResponseWriter, r *http.Request) {
 	err = g.gs.Update(gallery)
 	if err != nil {
 		vd.SetAlert(err)
-		g.EditView.Render(w, r, vd)
-		return
-	}
-	vd.Alert = &views.Alert{
-		Level:   views.AlertLvlSuccess,
-		Message: "Gallery successfully updated!",
+	} else {
+		vd.Alert = &views.Alert{
+			Level:   views.AlertLvlSuccess,
+			Message: "Gallery successfully updated!",
+		}
 	}
 	g.EditView.Render(w, r, vd)
 }
 
-// POST / galleries
+// POST /galleries
 func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 	var vd views.Data
 	var form GalleryForm
 	if err := parseForm(r, &form); err != nil {
-		log.Println(err)
 		vd.SetAlert(err)
 		g.New.Render(w, r, vd)
 		return
 	}
 	user := context.User(r.Context())
-	if user == nil {
-		http.Redirect(w, r, "/login", http.StatusFound)
-		return
-	}
 	gallery := models.Gallery{
 		Title:  form.Title,
 		UserID: user.ID,
@@ -141,17 +132,17 @@ func (g *Galleries) Create(w http.ResponseWriter, r *http.Request) {
 		g.New.Render(w, r, vd)
 		return
 	}
-	url, err := g.r.Get(EditGallery).URL("id", fmt.Sprintf("%v", gallery.ID))
-	if err != nil {
 
+	url, err := g.r.Get(EditGallery).URL("id",
+		strconv.Itoa(int(gallery.ID)))
+	if err != nil {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
 	http.Redirect(w, r, url.Path, http.StatusFound)
-
 }
 
-// POST / galleries/:id/delete
+// POST /galleries/:id/delete
 func (g *Galleries) Delete(w http.ResponseWriter, r *http.Request) {
 	gallery, err := g.galleryByID(w, r)
 	if err != nil {
@@ -159,21 +150,35 @@ func (g *Galleries) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	user := context.User(r.Context())
 	if gallery.UserID != user.ID {
-		http.Error(w, "Gallery NOT found!", http.StatusNotFound)
+		http.Error(w, "You do not have permission to edit "+
+			"this gallery", http.StatusForbidden)
 		return
 	}
 	var vd views.Data
 	err = g.gs.Delete(gallery.ID)
 	if err != nil {
-		dv.SetAlert(err)
+		vd.SetAlert(err)
 		vd.Yield = gallery
 		g.EditView.Render(w, r, vd)
 		return
 	}
-	http.Redirect(w, r, "/galleries", http.StatusFound)
+	url, err := g.r.Get(IndexGalleries).URL()
+	if err != nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, url.Path, http.StatusFound)
 }
 
-func (g *Galleries) galleryByID(w http.ResponseWriter, r *http.Request) (*models.Gallery, error) {
+// galleryByID will parse the "id" variable from the
+// request path using gorilla/mux and then use that ID to
+// retrieve the gallery from the GalleryService
+//
+// galleryByID will return an error if one occurs, but it
+// will also render the error with an http.Error function
+// call, so you do not need to.
+func (g *Galleries) galleryByID(w http.ResponseWriter,
+	r *http.Request) (*models.Gallery, error) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
 	id, err := strconv.Atoi(idStr)
@@ -187,7 +192,7 @@ func (g *Galleries) galleryByID(w http.ResponseWriter, r *http.Request) (*models
 		case models.ErrNotFound:
 			http.Error(w, "Gallery not found", http.StatusNotFound)
 		default:
-			http.Error(w, "Whoops!! Something went REALLY wrong", http.StatusInternalServerError)
+			http.Error(w, "Whoops! Something went wrong.", http.StatusInternalServerError)
 		}
 		return nil, err
 	}

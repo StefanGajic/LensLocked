@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/StefanGajic/lenslocked/context"
+	"github.com/lenslocked/context"
 )
 
 var (
@@ -45,7 +45,7 @@ func (v *View) Render(w http.ResponseWriter, r *http.Request, data interface{}) 
 	var vd Data
 	switch d := data.(type) {
 	case Data:
-		vd = data
+		vd = d
 		//do nothing
 	default:
 		data = Data{

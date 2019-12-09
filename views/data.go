@@ -1,6 +1,10 @@
 package views
 
-import "log"
+import (
+	"log"
+
+	"github.com/lenslocked/models"
+)
 
 const (
 	AlertLvlError   = "danger"
@@ -21,7 +25,7 @@ type Alert struct {
 }
 type Data struct {
 	Alert *Alert
-	User *models.User
+	User  *models.User
 	Yield interface{}
 }
 
@@ -45,24 +49,3 @@ func (d *Data) AlertError(msg string) {
 		Message: msg,
 	}
 }
-
-// func (d *Data) SetAlert(err error) {
-// 	d.Alert = &Alert{
-// 	  Level:   AlertLvlError,
-// 	  Message: err.Error(),
-// 	}
-//   }
-
-//   func (d *Data) SetAlert(err error) {
-// 	var msg string
-// 	if err is public {
-// 	  // Public() would return the public error message
-// 	  msg = err.Public()
-// 	} else {
-// 	  msg = AlertMsgGeneric
-// 	}
-// 	d.Alert = &Alert{
-// 	  Level:   AlertLvlError,
-// 	  Message: msg,
-// 	}
-//   }

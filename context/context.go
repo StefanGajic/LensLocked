@@ -13,7 +13,7 @@ const (
 type privateKey string
 
 func WithUser(ctx context.Context, user *models.User) context.Context {
-	return contex.WithValue(ctx, userkey, user)
+	return context.WithValue(ctx, userkey, user)
 }
 
 func User(ctx context.Context) *models.User {

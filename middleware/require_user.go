@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 
+	"github.com/lenslocked/context"
 	"github.com/lenslocked/models"
 )
 
@@ -10,12 +11,12 @@ type User struct {
 	models.UserService
 }
 
-func(mw *RequireUser) Apply(next http.Handler) http.HandlerFunc {
+func (mw *User) Apply(next http.Handler) http.HandlerFunc {
 	return mw.ApplyFn(next.ServeHTTP)
 }
 
 func (mw *User) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("remember_token")
 		if err != nil {
 			next(w, r)
@@ -27,7 +28,7 @@ func (mw *User) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		ctx := r.Context()
-		ctx = context.WithUser(ctx,user)
+		ctx = context.WithUser(ctx, user)
 		r = r.WithContext(ctx)
 		next(w, r)
 	})
@@ -38,17 +39,17 @@ type RequireUser struct {
 	User
 }
 
-func(mw *RequireUser) Apply(next http.Handler) http.HandlerFunc {
+func (mw *RequireUser) Apply(next http.Handler) http.HandlerFunc {
 	return mw.ApplyFn(next.ServeHTTP)
 }
 
 func (mw *RequireUser) ApplyFn(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	user := context.User(r.Context())
-	if user == nil{
-		http.Redirect(w, r, "/login", http.StatusFound)
-		return
-	}
-	next(w, r)
+		user := context.User(r.Context())
+		if user == nil {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+		next(w, r)
 	})
 }
