@@ -5,15 +5,12 @@ import (
 	"strings"
 
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+
 	"github.com/lenslocked/hash"
 	"github.com/lenslocked/rand"
 
 	"golang.org/x/crypto/bcrypt"
 )
-
-const userPwPepper = "secret-random-string"
-const hmacSecretKey = "secret-hmac-key"
 
 //used to interact with users database
 type UserDB interface {
@@ -47,12 +44,13 @@ type UserService interface {
 	UserDB
 }
 
-func NewUserService(db *gorm.DB) UserService {
+func NewUserService(db *gorm.DB, pepper, hmacKey string) UserService {
 	ug := &userGorm{db}
-	hmac := hash.NewHMAC(hmacSecretKey)
-	uv := newUserValidator(ug, hmac)
+	hmac := hash.NewHMAC(hmacKey)
+	uv := newUserValidator(ug, hmac, pepper)
 	return &userService{
 		UserDB: uv,
+		pepper: pepper,
 	}
 }
 
@@ -60,6 +58,7 @@ var _ UserService = &userService{}
 
 type userService struct {
 	UserDB
+	pepper string
 }
 
 func (us *userService) Authenticate(email, password string) (*User, error) {
@@ -68,7 +67,9 @@ func (us *userService) Authenticate(email, password string) (*User, error) {
 		return nil, err
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(foundUser.PasswordHash), []byte(password+userPwPepper))
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(foundUser.PasswordHash),
+		[]byte(password+us.pepper))
 
 	switch err {
 	case nil:
@@ -92,10 +93,11 @@ func runUserValFuncs(user *User, fns ...userValFunc) error {
 
 var _ UserDB = &userValidator{}
 
-func newUserValidator(udb UserDB, hmac hash.HMAC) *userValidator {
+func newUserValidator(udb UserDB, hmac hash.HMAC, pepper string) *userValidator {
 	return &userValidator{
 		UserDB:     udb,
 		hmac:       hmac,
+		pepper:     pepper,
 		emailRegex: regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,16}$`),
 	}
 }
@@ -104,6 +106,7 @@ type userValidator struct {
 	UserDB
 	hmac       hash.HMAC
 	emailRegex *regexp.Regexp
+	pepper     string
 }
 
 //will normalize mail address before calling byemail on UserDB field
@@ -186,13 +189,13 @@ func (uv *userValidator) Delete(id uint) error {
 	return uv.UserDB.Delete(id)
 }
 
-//will hash a users pass with a predefined pepper(userPwPepper)
+//will hash a users pass with a predefined pepper
 //and bcrypt if a pass field is not empty string
 func (uv *userValidator) bcryptPassword(user *User) error {
 	if user.Password == "" {
 		return nil
 	}
-	pwBytes := []byte(user.Password + userPwPepper)
+	pwBytes := []byte(user.Password + uv.pepper)
 	hashedBytes, err := bcrypt.GenerateFromPassword(pwBytes, bcrypt.DefaultCost)
 	if err != nil {
 		return err

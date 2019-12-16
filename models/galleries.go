@@ -1,6 +1,10 @@
 package models
 
-import "github.com/jinzhu/gorm"
+import (
+	"log"
+
+	"github.com/jinzhu/gorm"
+)
 
 // Gallery represents the galleries table in our DB
 // and is mostly a container resource composed of images.
@@ -120,8 +124,9 @@ func (gg *galleryGorm) ByID(id uint) (*Gallery, error) {
 
 func (gg *galleryGorm) ByUserID(userID uint) ([]Gallery, error) {
 	var galleries []Gallery
-	db := gg.db.Where("user_id = ?", userID)
-	if err := db.Find(&galleries).Error; err != nil {
+	err := gg.db.Where("user_id = ?", userID).Find(&galleries).Error
+	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	return galleries, nil

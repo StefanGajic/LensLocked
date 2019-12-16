@@ -1,9 +1,10 @@
 package controllers
 
 import (
-	"log"
 	"net/http"
+	"time"
 
+	"github.com/lenslocked/context"
 	"github.com/lenslocked/models"
 	"github.com/lenslocked/rand"
 
@@ -71,7 +72,11 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
-	http.Redirect(w, r, "/galleries", http.StatusFound)
+	alert := views.Alert{
+		Level:   views.AlertLvlSuccess,
+		Message: "Welcome to Lens Gopher!!!",
+	}
+	views.RedirectAlert(w, r, "/galleries", http.StatusFound, alert)
 
 }
 
@@ -87,7 +92,6 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 	vd := views.Data{}
 	form := LoginForm{}
 	if err := parseForm(r, &form); err != nil {
-		log.Println(err)
 		vd.SetAlert(err)
 		u.LoginView.Render(w, r, vd)
 		return
@@ -111,6 +115,28 @@ func (u *Users) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.Redirect(w, r, "/galleries", http.StatusFound)
+}
+
+// POST /logout
+func (u *Users) Logout(w http.ResponseWriter, r *http.Request) {
+	// First expire the user's cookie
+	cookie := http.Cookie{
+		Name:     "remember_token",
+		Value:    "",
+		Expires:  time.Now(),
+		HttpOnly: true,
+	}
+	http.SetCookie(w, &cookie)
+	// Then we update the user with a new remember token
+	user := context.User(r.Context())
+	// We are ignoring errors for now because they are
+	// unlikely, and even if they do occur we can't recover
+	// now that the user doesn't have a valid cookie
+	token, _ := rand.RememberToken()
+	user.Remember = token
+	u.us.Update(user)
+	// Finally send the user to the home page
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 // used to sign in via cookies

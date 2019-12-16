@@ -2,10 +2,15 @@ package views
 
 import (
 	"bytes"
+	"errors"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"path/filepath"
+
+	"github.com/gorilla/csrf"
 
 	"github.com/lenslocked/context"
 )
@@ -20,7 +25,14 @@ func NewView(layout string, files ...string) *View {
 	addTemplatePath(files)
 	addTemplateExt(files)
 	files = append(files, layoutFiles()...)
-	t, err := template.ParseFiles(files...)
+	t, err := template.New("").Funcs(template.FuncMap{
+		"csrfField": func() (template.HTML, error) {
+			return "", errors.New("csrf not impletented!!!")
+		},
+		"pathEscape": func(s string) string {
+			return url.PathEscape(s)
+		},
+	}).ParseFiles(files...)
 	if err != nil {
 		panic(err)
 	}
@@ -52,10 +64,21 @@ func (v *View) Render(w http.ResponseWriter, r *http.Request, data interface{}) 
 			Yield: data,
 		}
 	}
+	if alert := getAlert(r); alert != nil {
+		vd.Alert = alert
+		clearAlert(w)
+	}
 	vd.User = context.User(r.Context())
 	var buf bytes.Buffer
-	if err := v.Template.ExecuteTemplate(&buf, v.Layout, vd); err != nil {
-		http.Error(w, "Something went wrong! Don't contact us figure uut yourself!!", http.StatusInternalServerError)
+	csrfField := csrf.TemplateField(r)
+	tpl := v.Template.Funcs(template.FuncMap{
+		"csrfField": func() template.HTML {
+			return csrfField
+		},
+	})
+	if err := tpl.ExecuteTemplate(&buf, v.Layout, vd); err != nil {
+		log.Println(err)
+		http.Error(w, "Something went wrong! Try not to contact us but figure out yourself!", http.StatusInternalServerError)
 		return
 	}
 	io.Copy(w, &buf)
