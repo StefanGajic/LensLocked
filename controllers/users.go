@@ -15,11 +15,12 @@ import (
 //this func will panic if templates are not
 //parsed correctly, and should only be used
 //during initial setup
-func NewUsers(us models.UserService) *Users {
+func NewUsers(us models.UserService) *Users { //, emailer *email.Client
 	return &Users{
 		NewView:   views.NewView("bootstrap", "users/new"),
 		LoginView: views.NewView("bootstrap", "users/login"),
 		us:        us,
+		//emailer:   emailer,
 	}
 }
 
@@ -34,7 +35,9 @@ type Users struct {
 
 // GET /signup
 func (u *Users) New(w http.ResponseWriter, r *http.Request) {
-	u.NewView.Render(w, r, nil)
+	var form SignupForm
+	parseURLParams(r, &form)
+	u.NewView.Render(w, r, form)
 }
 
 type SignupForm struct {
@@ -50,6 +53,7 @@ type SignupForm struct {
 func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 	var vd views.Data
 	var form SignupForm
+	vd.Yield = &form
 	if err := parseForm(r, &form); err != nil {
 		vd.SetAlert(err)
 		u.NewView.Render(w, r, vd)
@@ -65,7 +69,7 @@ func (u *Users) Create(w http.ResponseWriter, r *http.Request) {
 		u.NewView.Render(w, r, vd)
 		return
 	}
-
+	//   u.emailer.Welcome(user.Name, user.Email)
 	err := u.signIn(w, &user)
 	if err != nil {
 		http.Redirect(w, r, "/login", http.StatusFound)
