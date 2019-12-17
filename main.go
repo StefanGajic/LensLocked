@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	//"github.com/lenslocked/email"
 	"github.com/lenslocked/middleware"
 	"github.com/lenslocked/rand"
 
@@ -37,9 +38,15 @@ func main() {
 	//services.DestructiveReset()
 	services.AutoMigrate()
 
+	// mgCfg := cfg.Mailgun
+	// emailer := email.NewClient(
+	// 	email.WithSender("Lenslocked.com Support", "support@"+mgCfg.Domain),
+	// 	email.WithMailgun(mgCfg.Domain, mgCfg.APIKey, mgCfg.PublicAPIKey),
+	// )
+
 	r := mux.NewRouter()
 	staticC := controllers.NewStatic()
-	usersC := controllers.NewUsers(services.User)
+	usersC := controllers.NewUsers(services.User) //, emailer
 	galleriesC := controllers.NewGalleries(services.Gallery, services.Image, r)
 
 	b, err := rand.Bytes(32)
